@@ -13,7 +13,7 @@ type Movie struct {
 	ID        uint64    `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	Title     string    `json:"title"`
-	Year      uint16    `json:"year,omitempty"`
+	Year      int32     `json:"year,omitempty"`
 	Runtime   Runtime   `json:"runtime,omitempty"`
 	Genres    []string  `json:"genres,omitempty"`
 	Version   uint8     `json:"version"`
@@ -25,7 +25,7 @@ func ValidateMovie(v *validator.Validator, movie *Movie) {
 
 	v.Check(movie.Year != 0, "year", "must be provided")
 	v.Check(movie.Year >= 1888, "year", "must be greater than 1888")
-	v.Check(movie.Year <= uint16(time.Now().Year()), "year", "must not be in the future")
+	v.Check(movie.Year <= int32(time.Now().Year()), "year", "must not be in the future")
 
 	v.Check(movie.Runtime != 0, "runtime", "must be provided")
 	v.Check(movie.Runtime > 0, "runtime", "must be a positive integer")
@@ -88,7 +88,7 @@ func (m MovieModel) Update(movie *Movie) error {
 	query := `
 			UPDATE movies
 			SET title = $1, year = $2, runtime = $3, genres = $4, version = version + 1
-			WHERE id = $5
+			WHERE id = $5 AND version = $6
 			RETURNING version`
 
 	args := []any{
@@ -97,9 +97,20 @@ func (m MovieModel) Update(movie *Movie) error {
 		movie.Runtime,
 		pq.Array(movie.Genres),
 		movie.ID,
+		movie.Version,
 	}
 
-	return m.DB.QueryRow(query, args...).Scan(&movie.Version)
+	err := m.DB.QueryRow(query, args...).Scan(&movie.Version)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrEditConflict
+		default:
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (m MovieModel) Delete(id int64) error {
