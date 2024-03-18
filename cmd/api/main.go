@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"flag"
+	"greenlight/internal/data"
 	"log/slog"
 	"net/http"
 	"os"
@@ -29,6 +30,7 @@ type config struct {
 type application struct {
 	config config
 	logger *slog.Logger
+	models data.Models
 }
 
 func main() {
@@ -61,6 +63,7 @@ func main() {
 	app := application{
 		config: cfg,
 		logger: logger,
+		models: data.NewModels(db),
 	}
 
 	srv := &http.Server{
@@ -71,6 +74,8 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
+
+	logger.Info("starting server", slog.String("addr", srv.Addr), slog.String("env", cfg.env))
 
 	err = srv.ListenAndServe()
 	logger.Error(err.Error())
