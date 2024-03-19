@@ -5,8 +5,10 @@ import (
 	"database/sql"
 	"flag"
 	"greenlight/internal/data"
+	"greenlight/internal/mailer"
 	"log/slog"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -29,12 +31,20 @@ type config struct {
 		burst   int
 		enabled bool
 	}
+	smtp struct {
+		host     string
+		port     int
+		username string
+		password string
+		sender   string
+	}
 }
 
 type application struct {
 	config config
 	logger *slog.Logger
 	models data.Models
+	mailer mailer.Mailer
 }
 
 func main() {
@@ -70,6 +80,7 @@ func main() {
 		config: cfg,
 		logger: logger,
 		models: data.NewModels(db),
+		mailer: mailer.New(cfg.smtp.host, cfg.smtp.port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender),
 	}
 
 	err = app.serve()
@@ -108,9 +119,19 @@ func loadEnvConfig() (config, error) {
 		return cfg, err
 	}
 
+	portStr := os.Getenv("SMTP_PORT")
+
 	cfg.port = os.Getenv("PORT")
 	cfg.env = os.Getenv("ENV")
 	cfg.db.dsn = os.Getenv("PSQL_DSN")
+	cfg.smtp.host = os.Getenv("SMTP_HOST")
+	cfg.smtp.sender = os.Getenv("SMTP_SENDER")
+	cfg.smtp.port, err = strconv.Atoi(portStr)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.smtp.username = os.Getenv("SMTP_USERNAME")
+	cfg.smtp.password = os.Getenv("SMTP_PASSWORD")
 
 	return cfg, nil
 }

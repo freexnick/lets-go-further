@@ -5,3 +5,7 @@ PSQL_PASSWORD=admin
 PSQL_DATABASE=greenlight
 PSQL_HOST=localhost
 PSQL_DSN="postgres://${PSQL_USER}:${PSQL_PASSWORD}@${PSQL_HOST}/${PSQL_DATABASE}?sslmode=disable"
+SMTP_HOST=sandbox.smtp.mailtrap.io
+SMTP_PORT=2525
+SMTP_USERNAME=<your username>
+SMTP_PASSWORD=<your password>
