@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"greenlight/internal/validator"
 	"time"
 
@@ -152,13 +153,13 @@ func (m MovieModel) Delete(id int64) error {
 	return nil
 }
 
-func (m MovieModel) GetAll(title string, genres []string, filter Filters) ([]*Movie, error) {
-	query := `
+func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*Movie, error) {
+	query := fmt.Sprintf(`
 			SELECT id, created_at, title, year, runtime, genres, version
 			FROM movies
 			WHERE (to_tsvector('simple', title) @@ plainto_tsquery('simple', $1) OR $1 = '')
 			AND (genres @> $2 OR $2 = '{}')
-			ORDER BY id`
+			ORDER BY %s %s, id ASC`, filters.sortColumn(), filters.sortDirection())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -170,7 +171,7 @@ func (m MovieModel) GetAll(title string, genres []string, filter Filters) ([]*Mo
 
 	defer rows.Close()
 
-	movies := make([]*Movie, 0, filter.PageSize)
+	movies := make([]*Movie, 0, filters.PageSize)
 
 	for rows.Next() {
 		var movie Movie
